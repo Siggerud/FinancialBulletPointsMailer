@@ -1,6 +1,6 @@
 import requests.exceptions
 from scraper import Scraper
-from threading import Thread
+import time
 import os
 
 #TODO: make everything faster by threading
@@ -117,6 +117,7 @@ class ScrapedDataCleaner:
         return sorted(unsortedDict.items(), key=lambda x: x[1])
 
     def get_currencies(self):
+        #start = time.time()
         currencyChanges = {}
         currencies = ["USD", "EUR", "CHF", "JPY", "GBP"]
         for currency in currencies:
@@ -131,7 +132,8 @@ class ScrapedDataCleaner:
                 currencyChanges[currencyPair] = change
 
         sortedCurrencyChanges = self._sort_dict_by_value(currencyChanges)
-
+        #end = time.time()
+        #print(end-start)
         return sortedCurrencyChanges
 
 
