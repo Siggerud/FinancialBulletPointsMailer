@@ -2,12 +2,14 @@ import requests.exceptions
 from scraper import Scraper
 from threading import Thread
 import os
+import time
 
 #TODO: make everything faster by threading
 class ScrapedDataCleaner:
     def __init__(self):
         self._url = "https://markets.businessinsider.com/"
         self._numberOfProcessors = os.cpu_count()
+        self._currencyChanges = []
 
     def get_etfs(self):
         oneYearChanges = {}
@@ -117,23 +119,33 @@ class ScrapedDataCleaner:
         return sorted(unsortedDict.items(), key=lambda x: x[1])
 
     def get_currencies(self):
-        currencyChanges = {}
+        start = time.time()
         currencies = ["USD", "EUR", "CHF", "JPY", "GBP"]
-        for currency in currencies:
-            scraper = Scraper(self._url + "ajax/ExchangeRate_ListWithShortNameExcludes?currency=" + currency)
-            soup = scraper.get_soup()
-            tbody = soup.find("tbody")
-            trTags = tbody.find_all("tr", class_="table__tr")
-            for trTag in trTags:
-                tdTags = trTag.find_all("td")
-                currencyPair = tdTags[0].text.strip()
-                change = float(tdTags[4].text.strip())
-                currencyChanges[currencyPair] = change
+        threads = []
+        for i in range(len(currencies)):
+            currency = currencies[i]
+            thread = Thread(target=self.get_currencies_threaded, args=(currency,))
+            threads.append(thread)
+            thread.start()
 
-        sortedCurrencyChanges = self._sort_dict_by_value(currencyChanges)
+        for thread in threads:
+            thread.join()
 
-        return sortedCurrencyChanges
+        end = time.time()
+        print(end-start)
 
+        return sorted(self._currencyChanges, key=lambda x: x[1])
+
+    def get_currencies_threaded(self, currency):
+        scraper = Scraper(self._url + "ajax/ExchangeRate_ListWithShortNameExcludes?currency=" + currency)
+        soup = scraper.get_soup()
+        tbody = soup.find("tbody")
+        trTags = tbody.find_all("tr", class_="table__tr")
+        for trTag in trTags:
+            tdTags = trTag.find_all("td")
+            currencyPair = tdTags[0].text.strip()
+            change = float(tdTags[4].text.strip())
+            self._currencyChanges.append((currencyPair, change))
 
     def get_indices(self):
         indicesChanges = {}
