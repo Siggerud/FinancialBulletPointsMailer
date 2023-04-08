@@ -68,6 +68,7 @@ class ScrapedDataCleaner:
         return sortedOneYearChanges, sortedThreeYearChanges
 
     def get_crypto_currencies(self):
+        start = time.time()
         cryptoChanges = {}
         subUrl = "ajax/ExchangeRate_CryptoExchangeRatePriceList/"
 
@@ -95,6 +96,8 @@ class ScrapedDataCleaner:
                 count += 1
 
         sortedCryptoChanges = self._sort_dict_by_value(cryptoChanges)
+        end = time.time()
+        print("Crypto time: ", end - start)
 
         return sortedCryptoChanges
 

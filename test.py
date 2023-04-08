@@ -2,4 +2,6 @@ from scrapedDataCleaner import ScrapedDataCleaner
 from scraper import Scraper
 
 cleaner = ScrapedDataCleaner()
-print(cleaner.get_currencies())
+cryptos = cleaner.get_crypto_currencies()
+print(cryptos)
+print(len(cryptos))
