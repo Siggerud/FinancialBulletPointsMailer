@@ -3,9 +3,9 @@ from emailSender import send_email
 
 cleaner = ScrapedDataCleaner()
 commodities = cleaner.get_commodity_list()
-indices = cleaner.get_indices()
-currencies = cleaner.get_currencies_threaded()
-crypto = cleaner.get_crypto_currencies()
+indices = cleaner._get_indices_threaded()
+currencies = cleaner._get_currencies_threaded()
+crypto = cleaner._get_crypto_currencies_threaded()
 oneYearEtfs, threeYearEtfs = cleaner.get_etfs()
 
 message = ""
