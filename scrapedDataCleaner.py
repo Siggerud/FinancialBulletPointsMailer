@@ -76,9 +76,7 @@ class ScrapedDataCleaner:
 
     def get_crypto_currencies(self):
         start = time.time()
-<<<<<<< HEAD
         cryptoChanges = {}
-=======
         cryptoPageCountEuro = self._get_page_count("ajax/ExchangeRate_CryptoExchangeRatePriceList/1/2")
         cryptoPageCountDollar = self._get_page_count("ajax/ExchangeRate_CryptoExchangeRatePriceList/1/3")
         numberOfPages = cryptoPageCountEuro + cryptoPageCountDollar
