@@ -4,7 +4,7 @@ from threading import Thread
 import os
 import time
 
-#TODO: make everything faster by threading
+#TODO: make all lists unique
 class ScrapedDataCleaner:
     def __init__(self):
         self._url = "https://markets.businessinsider.com/"
@@ -12,67 +12,62 @@ class ScrapedDataCleaner:
         self._currencyChanges = []
         self._indicesChanges = []
         self._cryptoChanges = []
+        self._oneYearEtfChanges = []
+        self._threeYearEtfChanges = []
 
     def get_etfs(self):
-        oneYearChanges = {}
-        threeYearChanges = {}
+        start = time.time()
+        lastEtfPage = self._get_page_count("api/etf-ajax-search")
+        threads = []
+        for page in range(1, lastEtfPage+1):
+            thread = Thread(target=self._get_etfs_threaded, args=(page,))
+            threads.append(thread)
+            thread.start()
 
+        for thread in threads:
+            thread.join()
+
+        end = time.time()
+        print("ETF time: ", end - start)
+
+        return sorted(self._oneYearEtfChanges, key=lambda x: x[1]), \
+               sorted(self._threeYearEtfChanges, key=lambda x: x[1])
+
+    def _get_etfs_threaded(self, page):
         subUrl = "api/etf-ajax-search?p="
-
-        count = 1
-        endFound = False
-        while True:
-            if endFound:
-                break
-
-            scraper = Scraper(self._url + subUrl + str(count))
+        scraper = Scraper(self._url + subUrl + str(page))
+        soup = scraper.get_soup()
+        tbody = soup.find("tbody", class_="table__tbody")
+        trTags = tbody.find_all("tr", class_="table__tr")
+        for trTag in trTags:
+            tdTags = trTag.find_all("td")
+            etf = tdTags[0].find("a").text
             try:
-                soup = scraper.get_soup()
-            except requests.exceptions.HTTPError:
-                break
-            tbody = soup.find("tbody", class_="table__tbody")
-            trTags = tbody.find_all("tr", class_="table__tr")
-            for trTag in trTags:
-                tdTags = trTag.find_all("td")
+                oneYearChangeValue = tdTags[3].find("span").text
                 try:
-                    title = tdTags[0].find("a").text
-                except AttributeError:
-                    if tdTags[0].find("div").text.strip() == "Your search did not return any results.":
-                        endFound = True
-                        break
+                    oneYearChange = float(oneYearChangeValue[:-1])
+                except ValueError:
+                    oneYearChange = float(oneYearChangeValue[:-1].replace(",", ""))
+            except AttributeError:
+                oneYearChange = None
+
+            if oneYearChange:
+                self._oneYearEtfChanges.append((etf, oneYearChange))
+
+            try:
+                threeYearChangeValue = tdTags[4].find("span").text
                 try:
-                    oneYearChangeValue = tdTags[3].find("span").text
-                    try:
-                        oneYearChange = float(oneYearChangeValue[:-1])
-                    except ValueError:
-                        oneYearChange = float(oneYearChangeValue[:-1].replace(",", ""))
-                except AttributeError:
-                    oneYearChange = None
+                    threeYearChange = float(threeYearChangeValue[:-1])
+                except ValueError:
+                    threeYearChange = float(threeYearChangeValue[:-1].replace(",", ""))
+            except AttributeError:
+                threeYearChange = None
 
-                if oneYearChange:
-                    oneYearChanges[title] = oneYearChange
+            if threeYearChange:
+                self._threeYearEtfChanges.append((etf, threeYearChange))
 
-                try:
-                    threeYearChangeValue = tdTags[4].find("span").text
-                    try:
-                        threeYearChange = float(threeYearChangeValue[:-1])
-                    except ValueError:
-                        threeYearChange = float(threeYearChangeValue[:-1].replace(",", ""))
-                except AttributeError:
-                    threeYearChange = None
-
-                if threeYearChange:
-                    threeYearChanges[title] = threeYearChange
-
-            count += 1
-
-        sortedOneYearChanges = self._sort_dict_by_value(oneYearChanges)
-        sortedThreeYearChanges = self._sort_dict_by_value(threeYearChanges)
-
-        return sortedOneYearChanges, sortedThreeYearChanges
-
-    def _get_crypto_page_count(self):
-        scraper = Scraper(self._url + "cryptocurrencies")
+    def _get_page_count(self, subUrl):
+        scraper = Scraper(self._url + subUrl)
         soup = scraper.get_soup()
         lastLiTag = soup.find_all("li", class_="pagination__item")[-1]
         pageCount = int(lastLiTag["data-pagination-page"])
@@ -81,15 +76,16 @@ class ScrapedDataCleaner:
 
     def get_crypto_currencies(self):
         start = time.time()
-        cryptoPageCount = self._get_crypto_page_count()
-        numberOfPages = cryptoPageCount * 2 # multiply by two get values in both dollars and euros
+        cryptoPageCountEuro = self._get_page_count("ajax/ExchangeRate_CryptoExchangeRatePriceList/1/2")
+        cryptoPageCountDollar = self._get_page_count("ajax/ExchangeRate_CryptoExchangeRatePriceList/1/3")
+        numberOfPages = cryptoPageCountEuro + cryptoPageCountDollar
         threads = []
         for pageCount in range(1, (numberOfPages+1)):
-            if pageCount < cryptoPageCount:
+            if pageCount < cryptoPageCountEuro:
                 page = pageCount
                 currencyNum = "2"
             else:
-                page = pageCount - cryptoPageCount
+                page = pageCount - cryptoPageCountEuro
                 currencyNum = "3"
 
             thread = Thread(target=self._get_crypto_currencies_threaded, args=(currencyNum, page))
@@ -122,22 +118,18 @@ class ScrapedDataCleaner:
             self._cryptoChanges.append((title, change))
 
     def get_commodity_list(self):
-        commodityChanges = {}
+        commodityChanges = []
         scraper = Scraper(self._url + "commodities")
         soup = scraper.get_soup()
         trTags = soup.find_all("tr", class_="table__tr")[5:] # skip first table
         for trTag in trTags:
             tdTags = trTag.find_all("td")
             if tdTags:
-                title = tdTags[0].find("a").text
+                commodity = tdTags[0].find("a").text
                 change = float(tdTags[2].find("span").text[:-1])
-                commodityChanges[title] = change
-        sortedCommodityChanges = self._sort_dict_by_value(commodityChanges)
+                commodityChanges.append((commodity, change))
 
-        return sortedCommodityChanges
-
-    def _sort_dict_by_value(self, unsortedDict):
-        return sorted(unsortedDict.items(), key=lambda x: x[1])
+        return sorted(list(set(commodityChanges)), key = lambda x: x[1])
 
     def get_currencies(self):
         start = time.time()
@@ -187,7 +179,7 @@ class ScrapedDataCleaner:
         end = time.time()
         print("Indices time: ", end - start)
 
-        return sorted(self._indicesChanges, key=lambda x: x[1])
+        return sorted(list(set(self._indicesChanges)), key=lambda x: x[1])
 
     def _get_indices_threaded(self, market):
         scraper = Scraper(self._url + "ajax/IndexListTab/" + market)
