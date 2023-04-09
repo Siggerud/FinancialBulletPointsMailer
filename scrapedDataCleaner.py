@@ -1,10 +1,8 @@
-import requests.exceptions
 from scraper import Scraper
 from threading import Thread
 import os
 import time
-
-#TODO: make all lists unique
+#TODO: delete threading branch
 class ScrapedDataCleaner:
     def __init__(self):
         self._url = "https://markets.businessinsider.com/"
@@ -30,8 +28,8 @@ class ScrapedDataCleaner:
         end = time.time()
         print("ETF time: ", end - start)
 
-        return sorted(self._oneYearEtfChanges, key=lambda x: x[1]), \
-               sorted(self._threeYearEtfChanges, key=lambda x: x[1])
+        return sorted(list(set(self._oneYearEtfChanges)), key=lambda x: x[1]), \
+               sorted(list(set(self._threeYearEtfChanges)), key=lambda x: x[1])
 
     def _get_etfs_threaded(self, page):
         subUrl = "api/etf-ajax-search?p="
@@ -98,7 +96,7 @@ class ScrapedDataCleaner:
         end = time.time()
         print("Crypto time: ", end - start)
 
-        return sorted(self._cryptoChanges, key=lambda x: x[1])
+        return sorted(list(set(self._cryptoChanges)), key=lambda x: x[1])
 
 
     def _get_crypto_currencies_threaded(self, currencyNum, page):
@@ -147,7 +145,7 @@ class ScrapedDataCleaner:
         end = time.time()
         print("currency time: ", end-start)
 
-        return sorted(self._currencyChanges, key=lambda x: x[1])
+        return sorted(list(set(self._currencyChanges)), key=lambda x: x[1])
 
     def _get_currencies_threaded(self, currency):
         scraper = Scraper(self._url + "ajax/ExchangeRate_ListWithShortNameExcludes?currency=" + currency)

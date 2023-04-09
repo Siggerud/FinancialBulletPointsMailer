@@ -1,5 +1,6 @@
 from scrapedDataCleaner import ScrapedDataCleaner
 from emailSender import send_email
+from datetime import datetime
 
 def add_titles_and_changes_justified(titles, changes):
     message = ""
@@ -14,7 +15,7 @@ def add_titles_and_changes_justified(titles, changes):
 
     return message
 
-def generate_message():
+def generate_message(date, weekday):
     cleaner = ScrapedDataCleaner()
     commodities = cleaner.get_commodity_list()
     indices = cleaner.get_indices()
@@ -22,8 +23,7 @@ def generate_message():
     crypto = cleaner.get_crypto_currencies()
     oneYearEtfs, threeYearEtfs = cleaner.get_etfs()
 
-    #TODO: add date for today
-    message = "Financial movements of today:\n"
+    message = f"Financial movements of {weekday.lower()} {date}:\n"
     financialsOfInterest = {"Commodities": commodities, "Indices": indices, "Currencies": currencies,
                             "Crypto": crypto, "ETF 1-year changes": oneYearEtfs, "ETF 3-year changes": threeYearEtfs}
 
@@ -54,6 +54,10 @@ def generate_message():
     return message
 
 if __name__ == "__main__":
-    message = generate_message()
-    send_email("Financials for today", message)
+    now = datetime.now()
+    todayDate = now.strftime("%d/%m/%Y")
+    weekDay = now.strftime("%A")
+    message = generate_message(todayDate, weekDay)
+    subject = f"Financials for {weekDay.lower()} {todayDate}"
+    send_email(subject, message)
 
