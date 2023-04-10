@@ -1,4 +1,3 @@
-
 import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv
@@ -8,8 +7,8 @@ load_dotenv()
 def send_email(subject, message):
     # set your email and password
     # please use App Password
-    email_address = os.getenv("EMAIL_ADRESS")
-    email_password = os.getenv("EMAIL_PASSWORD")
+    email_address = os.getenv("SENDER")
+    email_password = os.getenv("SENDER_PASSWORD")
 
     # create email
     msg = EmailMessage()
